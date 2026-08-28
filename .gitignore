@@ -1,0 +1,5 @@
+.venv/
+__pycache__/
+*.pyc
+request_search_format.txt
+Final Books
