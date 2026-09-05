@@ -76,6 +76,12 @@ ARABIC_STOPWORDS = {
     "قلت", "يقول", "الحمد", "سبحانه", "تعالى",
 }
 
+# The old gibberish rule deleted any paragraph that did not contain one of
+# the stopwords above. That removes valid titles, headings, poetry, and
+# technical prose. Keep the detector available for future diagnostics, but
+# never delete paragraphs based on this weak heuristic.
+ENABLE_GIBBERISH_FILTER = False
+
 
 # ---------------------------------------------------------------------------
 # Individual cleaning steps
@@ -138,6 +144,17 @@ def strip_noise_lines(text: str) -> str:
     reliably (see is_gibberish_paragraph)."""
     kept_lines = []
     for line in text.split("\n"):
+        # extract_text.py uses form-feed as a page separator. str.strip()
+        # would erase it, so preserve it before normal whitespace handling.
+        if "\f" in line:
+            parts = line.split("\f")
+            for part_index, part in enumerate(parts):
+                if part.strip():
+                    kept_lines.append(part.strip())
+                if part_index < len(parts) - 1:
+                    kept_lines.append("\f")
+            continue
+
         stripped = line.strip()
 
         if not stripped:
@@ -238,7 +255,10 @@ def clean_arabic_text(raw_text: str) -> str:
 
     cleaned_pages = []
     for paragraphs in pages:
-        kept = [p for p in paragraphs if not is_gibberish_paragraph(p)]
+        kept = [
+            p for p in paragraphs
+            if not (ENABLE_GIBBERISH_FILTER and is_gibberish_paragraph(p))
+        ]
         if kept:
             cleaned_pages.append("\n\n".join(kept))
 

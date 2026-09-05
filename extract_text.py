@@ -22,6 +22,7 @@ bottom for usage.
 """
 
 import argparse
+import shutil
 import sys
 import unicodedata
 from pathlib import Path
@@ -36,7 +37,14 @@ from PIL import Image    # converts a rendered page into an image OCR can read
 # PATH this line isn't needed, but on Windows it usually isn't unless
 # you added it manually during install, so point at it explicitly here.
 # Adjust the path if you installed it somewhere else.
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+WINDOWS_TESSERACT = Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe")
+if WINDOWS_TESSERACT.exists():
+    pytesseract.pytesseract.tesseract_cmd = str(WINDOWS_TESSERACT)
+elif shutil.which("tesseract") is None:
+    raise RuntimeError(
+        "Tesseract was not found. Install it, add it to PATH, and ensure "
+        "the Arabic language pack ('ara') is installed."
+    )
 
 
 # ---------------------------------------------------------------------------

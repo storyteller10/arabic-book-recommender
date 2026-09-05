@@ -33,6 +33,14 @@ from build_index import load_index  # noqa: E402
 MODEL_NAME = "intfloat/multilingual-e5-base"
 
 
+def _clean_csv_value(value):
+    """Return None for blank/NaN spreadsheet cells; otherwise clean text."""
+    if pd.isna(value):
+        return None
+    value = str(value).strip()
+    return value or None
+
+
 def load_model(model_name: str = MODEL_NAME):
     if SentenceTransformer is None:
         raise RuntimeError("sentence-transformers is not installed. Run: pip install sentence-transformers")
@@ -57,13 +65,17 @@ def load_metadata(csv_path: str) -> dict:
 
     metadata = {}
     for _, row in df.iterrows():
-        raw_filename = str(row["filename"]).strip()
+        raw_filename = _clean_csv_value(row["filename"])
+        if not raw_filename:
+            continue
         book_id = Path(raw_filename).stem  # strips .pdf, matches book_id used elsewhere
+        if book_id in metadata:
+            raise ValueError(f"Duplicate filename/book id in metadata CSV: {raw_filename}")
         metadata[book_id] = {
-            "title": str(row.get("title", "")).strip() or None,
-            "author": str(row.get("author", "")).strip() or None,
-            "publication_date": str(row.get("publication_date", "")).strip() or None,
-            "summary": str(row.get("description", "")).strip() or None,
+            "title": _clean_csv_value(row.get("title")),
+            "author": _clean_csv_value(row.get("author")),
+            "publication_date": _clean_csv_value(row.get("publication_date")),
+            "summary": _clean_csv_value(row.get("description")),
         }
 
     return metadata
@@ -103,6 +115,13 @@ def search(query: str, index, id_lookup: list, metadata: dict, model, top_k: int
     title, author, publication_date, summary, score -- ready for
     app.py to return as JSON with no further transformation.
     """
+    query = query.strip()
+    if not query:
+        raise ValueError("Search query cannot be empty")
+    if top_k < 1:
+        raise ValueError("top_k must be at least 1")
+
+    top_k = min(top_k, index.ntotal)
     query_vector = embed_query(query, model).reshape(1, -1)
     scores, positions = index.search(query_vector, top_k)
 
@@ -132,8 +151,15 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Use a random query vector instead of a real model")
     args = parser.parse_args()
 
+    args.query = args.query.strip()
+    if not args.query:
+        parser.error("--query cannot be empty")
+    if args.top_k < 1:
+        parser.error("--top-k must be at least 1")
+
     index, id_lookup = load_index(args.index)
     metadata = load_metadata(args.metadata)
+    args.top_k = min(args.top_k, index.ntotal)
 
     if args.dry_run:
         model = None

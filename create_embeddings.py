@@ -30,6 +30,7 @@ than an error, so it's worth remembering when search.py is built.
 """
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -43,7 +44,7 @@ except ImportError:
 
 
 MODEL_NAME = "intfloat/multilingual-e5-base"
-CHUNK_WORD_COUNT = 300      # ~ within the model's comfortable input window
+CHUNK_WORD_COUNT = 200      # safer for Arabic, where one word may be several tokens
 NUM_CHUNKS_PER_BOOK = 8     # how many chunks to sample per book and average
 MIN_WORDS_FOR_CHUNKING = CHUNK_WORD_COUNT * NUM_CHUNKS_PER_BOOK
 
@@ -154,7 +155,19 @@ def embed_folder(input_dir: str, output_dir: str, dry_run: bool = False) -> None
         book_id = txt_path.stem
         embedding_path = output_dir / f"{book_id}.npy"
 
-        if book_id in manifest and embedding_path.exists():
+        source_hash = hashlib.sha256(txt_path.read_bytes()).hexdigest()
+        expected_config = {
+            "model_name": MODEL_NAME,
+            "chunk_word_count": CHUNK_WORD_COUNT,
+            "num_chunks": NUM_CHUNKS_PER_BOOK,
+            "dry_run": dry_run,
+            "source_sha256": source_hash,
+        }
+
+        existing = manifest.get(book_id, {})
+        if embedding_path.exists() and all(
+            existing.get(key) == value for key, value in expected_config.items()
+        ):
             print(f"Skipping {txt_path.name} (already embedded)")
             continue
 
@@ -176,6 +189,7 @@ def embed_folder(input_dir: str, output_dir: str, dry_run: bool = False) -> None
         manifest[book_id] = {
             "filename": txt_path.name,
             "embedding_file": embedding_path.name,
+            **expected_config,
         }
         print(f"Embedded {txt_path.name}")
 
