@@ -171,6 +171,22 @@ def strip_noise_lines(text: str) -> str:
     return "\n".join(kept_lines)
 
 
+def remove_english_letters(text: str) -> str:
+    """Remove English OCR letters without merging adjacent Arabic words.
+
+    Drop leftover digits/punctuation from English-only noise lines, but
+    preserve line and page boundaries and any remaining Arabic content.
+    """
+    parts = re.split(r"([\n\f])", text)
+    for index in range(0, len(parts), 2):
+        line = parts[index]
+        if not re.search(r"[A-Za-z]", line):
+            continue
+        line = re.sub(r"[A-Za-z]+", " ", line)
+        parts[index] = line if any(char.isalpha() for char in line) else ""
+    return "".join(parts)
+
+
 def join_wrapped_lines_to_paragraphs(text: str) -> list:
     """
     Rejoin PDF-wrapped lines into paragraphs, returned per-page as a
@@ -241,7 +257,8 @@ def clean_arabic_text(raw_text: str) -> str:
          artifacts before any line-based analysis.
       2. Normalize letter variants / strip tatweel.
       3. Strip watermark / page-number lines (structural noise).
-      4. Rejoin wrapped lines into real paragraphs.
+      4. Remove English letters and their noise-only line remnants,
+         then rejoin wrapped lines into real paragraphs.
       5. Drop gibberish paragraphs (decorative-page OCR misreads) --
          done AFTER joining, since full paragraphs give a much more
          reliable signal than short raw wrapped lines.
@@ -250,6 +267,7 @@ def clean_arabic_text(raw_text: str) -> str:
     text = remove_diacritics(raw_text)
     text = normalize_arabic_letters(text)
     text = strip_noise_lines(text)
+    text = remove_english_letters(text)
 
     pages = join_wrapped_lines_to_paragraphs(text)
 

@@ -3,3 +3,8 @@ __pycache__/
 *.pyc
 request_search_format.txt
 Final Books
+updates.txt
+cleaned_text_old
+embeddings_old
+extracted_text_old
+index_old

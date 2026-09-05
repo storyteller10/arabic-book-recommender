@@ -27,6 +27,8 @@ import sys
 import unicodedata
 from pathlib import Path
 
+import regex
+
 import pymupdf          # reads PDF files, renders pages to images
 import pytesseract       # Python wrapper around the Tesseract OCR engine
 from PIL import Image    # converts a rendered page into an image OCR can read
@@ -53,18 +55,27 @@ elif shutil.which("tesseract") is None:
 
 OCR_LANGUAGE = "ara"          # Tesseract language pack to use
 OCR_DPI = 300                 # higher = better OCR accuracy, slower to render
-SCANNED_BOOK_THRESHOLD = 0.7  # if >=70% of pages are effectively empty, treat
-                               # the whole book as scanned and switch to sampled OCR
-SAMPLE_PAGE_COUNT = 15        # how many pages to OCR for a fully-scanned book
-FRONT_MATTER_PAGES = 8        # of those, how many are "grab the first N pages"
-                               # (cover/title/TOC/intro) vs. spread through the book
-MIN_SUBSTANTIAL_CHARS = 40    # pages with fewer real characters than this are
-                               # treated as "effectively empty" even if they
-                               # technically have some text (e.g. a burned-in
-                               # page number or watermark on an otherwise
-                               # scanned page) — this is what catches books
-                               # like "الحرب على الكسل" that have no literally
-                               # empty pages but also no real extractable content
+SCANNED_BOOK_THRESHOLD = 0.7  # >=70% unusable pages: use sampled OCR
+SAMPLE_PAGE_COUNT = 15        # maximum representative pages to consider for OCR
+FRONT_MATTER_PAGES = 8        # cover/title/TOC/intro, then spread through the body
+MIN_SUBSTANTIAL_CHARS = 40    # reject short text such as page numbers/watermarks
+
+
+# Match genuine Arabic letters, excluding digits, marks and punctuation.
+ARABIC_LETTER = regex.compile(r"[\p{Script=Arabic}&&\p{Letter}]", regex.VERSION1)
+MIN_ARABIC_LETTER_RATIO = 0.30
+
+
+def has_usable_arabic_text(text: str) -> bool:
+    """Reject thin text and broken/non-Arabic native font extraction."""
+    text = unicodedata.normalize("NFKC", text).strip()
+    if len(text) < MIN_SUBSTANTIAL_CHARS:
+        return False
+    alphabetic_count = sum(char.isalpha() for char in text)
+    if not alphabetic_count:
+        return False
+    arabic_count = len(ARABIC_LETTER.findall(text))
+    return arabic_count / alphabetic_count >= MIN_ARABIC_LETTER_RATIO
 
 
 def get_sample_page_indices(total_pages: int, sample_size: int = SAMPLE_PAGE_COUNT) -> set[int]:
@@ -128,14 +139,15 @@ def ocr_page(page, dpi: int = OCR_DPI, lang: str = OCR_LANGUAGE) -> str:
 def extract_text_from_pdf(pdf_path: str) -> str:
     """
     Open a PDF and return its text as a single string, using OCR
-    automatically wherever native text extraction comes up empty.
+    automatically wherever native Arabic text is too short or corrupted.
 
     Args:
         pdf_path: path to the .pdf file on disk
 
     Returns:
         Extracted (and/or OCR'd) text, pages joined by a separator.
-        For fully-scanned books, only a sample of pages is included
+        For scanned/broken books, OCR is limited to a sample; valid native
+        Arabic pages are also retained
         (see get_sample_page_indices) — this is intentional, not a bug.
 
     Raises:
@@ -155,49 +167,42 @@ def extract_text_from_pdf(pdf_path: str) -> str:
 
     total_pages = doc.page_count
     pages_text = [""] * total_pages
-    effectively_empty_indices = []
+    unusable_indices = []
 
     # --- Pass 1: try normal (free, fast) text extraction on every page ---
     for i, page in enumerate(doc):
         text = page.get_text()
         pages_text[i] = text
-        # Treat a page as needing OCR if it has no text at all, OR if it
-        # has only a trivial amount (a page number, a watermark) — real
-        # body content is virtually always well over MIN_SUBSTANTIAL_CHARS
-        # characters, so a page under that isn't giving the embedding
-        # model anything useful even though extraction "succeeded".
-        if len(text.strip()) < MIN_SUBSTANTIAL_CHARS:
-            effectively_empty_indices.append(i)
+        # Length alone cannot detect custom fonts extracting Arabic as Latin.
+        if not has_usable_arabic_text(text):
+            unusable_indices.append(i)
 
-    effective_empty_ratio = len(effectively_empty_indices) / total_pages if total_pages else 0
+    unusable_ratio = len(unusable_indices) / total_pages if total_pages else 0
 
-    # --- Pass 2: decide how to handle the effectively-empty pages ---
-    if effective_empty_ratio >= SCANNED_BOOK_THRESHOLD:
-        # Most/all of the book has no usable text layer -> this is a
-        # scanned book (even if a few pages have stray thin text like
-        # page numbers). OCR a representative sample instead of every page.
+    # --- Pass 2: OCR unusable native extraction (empty, thin or corrupted) ---
+    if unusable_ratio >= SCANNED_BOOK_THRESHOLD:
         sample_indices = get_sample_page_indices(total_pages)
+        # Clear ALL unusable pages, including those outside the OCR sample.
+        # Valid native Arabic pages remain intact, even within the sample.
+        for i in unusable_indices:
+            pages_text[i] = ""
+        ocr_indices = sample_indices.intersection(unusable_indices)
         print(
-            f"  {pdf_path.name}: detected as scanned "
-            f"({effective_empty_ratio:.0%} of pages effectively empty) -> "
-            f"OCR sampling {len(sample_indices)}/{total_pages} pages",
+            f"  {pdf_path.name}: detected as scanned/broken "
+            f"({unusable_ratio:.0%} of pages have unusable native Arabic text) -> "
+            f"OCR sampling {len(ocr_indices)}/{total_pages} pages",
             file=sys.stderr,
         )
-        for i in sample_indices:
+        for i in ocr_indices:
             pages_text[i] = ocr_page(doc[i])
-        # Pages outside the sample stay as-is (thin/empty) and get
-        # filtered out below — we deliberately don't OCR the whole book.
 
-    elif effectively_empty_indices:
-        # Only a handful of pages are effectively empty in an otherwise
-        # native-text book. The volume is small, so it's cheap to just
-        # OCR those specific pages directly.
+    elif unusable_indices:
         print(
-            f"  {pdf_path.name}: OCR fallback for {len(effectively_empty_indices)} "
-            f"page(s) out of {total_pages}",
+            f"  {pdf_path.name}: OCR fallback for {len(unusable_indices)} "
+            f"page(s) with unusable native Arabic text out of {total_pages}",
             file=sys.stderr,
         )
-        for i in effectively_empty_indices:
+        for i in unusable_indices:
             pages_text[i] = ocr_page(doc[i])
 
     doc.close()
