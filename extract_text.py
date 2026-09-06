@@ -56,7 +56,7 @@ elif shutil.which("tesseract") is None:
 OCR_LANGUAGE = "ara"          # Tesseract language pack to use
 OCR_DPI = 300                 # higher = better OCR accuracy, slower to render
 SCANNED_BOOK_THRESHOLD = 0.7  # >=70% unusable pages: use sampled OCR
-SAMPLE_PAGE_COUNT = 15        # maximum representative pages to consider for OCR
+SAMPLE_PAGE_COUNT = 30        # maximum representative pages to consider for OCR
 FRONT_MATTER_PAGES = 8        # cover/title/TOC/intro, then spread through the body
 MIN_SUBSTANTIAL_CHARS = 40    # reject short text such as page numbers/watermarks
 

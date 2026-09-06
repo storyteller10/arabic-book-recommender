@@ -1,0 +1,92 @@
+{
+  "أحكام الطهارة والصلاة": {
+    "filename": "أحكام الطهارة والصلاة.txt",
+    "embedding_file": "أحكام الطهارة والصلاة.npy",
+    "model_name": "intfloat/multilingual-e5-base",
+    "chunk_word_count": 200,
+    "num_chunks": 8,
+    "dry_run": false,
+    "source_sha256": "e6ace9163da1808a0f22d16cf56bc4ff735e0047d1736006005412302a14208b"
+  },
+  "الحرب على الكسل": {
+    "filename": "الحرب على الكسل.txt",
+    "embedding_file": "الحرب على الكسل.npy",
+    "model_name": "intfloat/multilingual-e5-base",
+    "chunk_word_count": 200,
+    "num_chunks": 8,
+    "dry_run": false,
+    "source_sha256": "e954bec67aabefbc13118ca8114a69a1adee661b08761873dc9b10ab2781aaee"
+  },
+  "الرجل النبيل": {
+    "filename": "الرجل النبيل.txt",
+    "embedding_file": "الرجل النبيل.npy",
+    "model_name": "intfloat/multilingual-e5-base",
+    "chunk_word_count": 200,
+    "num_chunks": 8,
+    "dry_run": false,
+    "source_sha256": "59739ff3cb8d3785ed630eaa868af4427acb3c59819e21a45902c04dc75468ba"
+  },
+  "الرحيق المختوم": {
+    "filename": "الرحيق المختوم.txt",
+    "embedding_file": "الرحيق المختوم.npy",
+    "model_name": "intfloat/multilingual-e5-base",
+    "chunk_word_count": 200,
+    "num_chunks": 8,
+    "dry_run": false,
+    "source_sha256": "0be280c49bcb4aea0558ff802e15e110b07bc7ead639b19d3b2bdee08dc43d2a"
+  },
+  "المختصر في تفسير القرآن الكريم": {
+    "filename": "المختصر في تفسير القرآن الكريم.txt",
+    "embedding_file": "المختصر في تفسير القرآن الكريم.npy",
+    "model_name": "intfloat/multilingual-e5-base",
+    "chunk_word_count": 200,
+    "num_chunks": 8,
+    "dry_run": false,
+    "source_sha256": "036cd72d86e436ac4ac044f13c7aa0faeb79f65de98d4310bd05aab85fd425b9"
+  },
+  "تذكرت ليلى": {
+    "filename": "تذكرت ليلى.txt",
+    "embedding_file": "تذكرت ليلى.npy",
+    "model_name": "intfloat/multilingual-e5-base",
+    "chunk_word_count": 200,
+    "num_chunks": 8,
+    "dry_run": false,
+    "source_sha256": "b059534ba67c11a73880717b8664194c0d39fbe28497b79adf7c6ff4cb0bd392"
+  },
+  "شرح الأربعين النووية لابن عثيمين": {
+    "filename": "شرح الأربعين النووية لابن عثيمين.txt",
+    "embedding_file": "شرح الأربعين النووية لابن عثيمين.npy",
+    "model_name": "intfloat/multilingual-e5-base",
+    "chunk_word_count": 200,
+    "num_chunks": 8,
+    "dry_run": false,
+    "source_sha256": "e1f555eb8a958f09d38d4da8289984ce75899c63b9001beb72b5f13bff8237b1"
+  },
+  "صور من حياة الصحابة": {
+    "filename": "صور من حياة الصحابة.txt",
+    "embedding_file": "صور من حياة الصحابة.npy",
+    "model_name": "intfloat/multilingual-e5-base",
+    "chunk_word_count": 200,
+    "num_chunks": 8,
+    "dry_run": false,
+    "source_sha256": "d4d177ab2e9774b171dcfd7808f4fffea38ae2de73a708796a340057823f1aa9"
+  },
+  "لأنك الله": {
+    "filename": "لأنك الله.txt",
+    "embedding_file": "لأنك الله.npy",
+    "model_name": "intfloat/multilingual-e5-base",
+    "chunk_word_count": 200,
+    "num_chunks": 8,
+    "dry_run": false,
+    "source_sha256": "00b8781deef518d087251fd58e864cf845fa1db11486a33f3f108f18a4f4d3ff"
+  },
+  "من معين السيرة صالح احمد الشامي": {
+    "filename": "من معين السيرة صالح احمد الشامي.txt",
+    "embedding_file": "من معين السيرة صالح احمد الشامي.npy",
+    "model_name": "intfloat/multilingual-e5-base",
+    "chunk_word_count": 200,
+    "num_chunks": 8,
+    "dry_run": false,
+    "source_sha256": "3347c321155ca6f2f99c293d373c5389eb5f83eaef2e2cef3ea0d71a46664590"
+  }
+}

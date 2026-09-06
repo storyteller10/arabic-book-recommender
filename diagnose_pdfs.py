@@ -28,7 +28,7 @@ import pymupdf
 
 # Keep these in sync with extract_text.py's config
 SCANNED_BOOK_THRESHOLD = 0.7
-SAMPLE_PAGE_COUNT = 15
+SAMPLE_PAGE_COUNT = 30
 FRONT_MATTER_PAGES = 8
 MIN_SUBSTANTIAL_CHARS = 40
 
