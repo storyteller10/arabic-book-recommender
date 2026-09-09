@@ -22,6 +22,7 @@ Usage:
 import argparse
 import unicodedata
 from pathlib import Path
+from project_config import project_path
 
 import regex
 import pymupdf
@@ -68,6 +69,7 @@ def get_sample_page_indices(total_pages: int, sample_size: int = SAMPLE_PAGE_COU
 
 
 def diagnose_pdf(pdf_path: Path) -> dict:
+    pdf_path = project_path(pdf_path)
     doc = pymupdf.open(pdf_path)
     total_pages = doc.page_count
 
@@ -127,7 +129,7 @@ def main():
     parser.add_argument("--folder", required=True, help="Folder of PDFs to inspect")
     args = parser.parse_args()
 
-    folder = Path(args.folder)
+    folder = project_path(args.folder)
     pdf_files = sorted(folder.glob("*.pdf"))
 
     if not pdf_files:

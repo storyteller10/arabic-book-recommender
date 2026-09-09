@@ -26,6 +26,7 @@ import shutil
 import sys
 import unicodedata
 from pathlib import Path
+from project_config import project_path
 
 import regex
 
@@ -34,19 +35,27 @@ import pytesseract       # Python wrapper around the Tesseract OCR engine
 from PIL import Image    # converts a rendered page into an image OCR can read
 
 
-# pytesseract calls the Tesseract program as an external process — it
-# needs to know where that .exe lives. If Tesseract is on your system
-# PATH this line isn't needed, but on Windows it usually isn't unless
-# you added it manually during install, so point at it explicitly here.
-# Adjust the path if you installed it somewhere else.
-WINDOWS_TESSERACT = Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe")
-if WINDOWS_TESSERACT.exists():
-    pytesseract.pytesseract.tesseract_cmd = str(WINDOWS_TESSERACT)
-elif shutil.which("tesseract") is None:
-    raise RuntimeError(
-        "Tesseract was not found. Install it, add it to PATH, and ensure "
-        "the Arabic language pack ('ara') is installed."
-    )
+def configure_tesseract(lang="ara"):
+    """Resolve the executable and validate language data before OCR."""
+    import os
+    configured = os.environ.get("TESSERACT_CMD", "").strip()
+    fallback = Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe")
+    command = configured or shutil.which("tesseract")
+    if not command and fallback.is_file():
+        command = str(fallback)
+    if not command:
+        raise RuntimeError("Tesseract not found. Set TESSERACT_CMD or add tesseract to PATH; install Arabic ara data for OCR.")
+    if configured and ("/" in configured or "\\" in configured):
+        command = str(project_path(configured))
+    pytesseract.pytesseract.tesseract_cmd = command
+    try:
+        languages = pytesseract.get_languages(config="")
+    except Exception as exc:
+        raise RuntimeError("Cannot run Tesseract. Check TESSERACT_CMD/PATH and the installed language data.") from exc
+    missing = set(lang.split("+")) - set(languages)
+    if missing:
+        raise RuntimeError(f"Tesseract language data missing: {', '.join(sorted(missing))}. Install ara.traineddata in tessdata (or set TESSDATA_PREFIX).")
+    return command
 
 
 # ---------------------------------------------------------------------------
@@ -122,6 +131,7 @@ def ocr_page(page, dpi: int = OCR_DPI, lang: str = OCR_LANGUAGE) -> str:
     at high DPI and running OCR takes real time per page, which is
     exactly why we only do this for a sample of pages, not every page.
     """
+    configure_tesseract(lang)
     # Render the page as a pixel image at the given resolution
     pix = page.get_pixmap(dpi=dpi)
 
@@ -155,7 +165,7 @@ def extract_text_from_pdf(pdf_path: str) -> str:
         RuntimeError: if the PDF can't be opened at all (corrupted,
             password-protected, etc.)
     """
-    pdf_path = Path(pdf_path)
+    pdf_path = project_path(pdf_path)
 
     if not pdf_path.exists():
         raise FileNotFoundError(f"No PDF found at: {pdf_path}")
@@ -230,8 +240,8 @@ def extract_folder(input_dir: str, output_dir: str) -> None:
     each one as a matching .txt file in output_dir. Skips PDFs that
     already have a corresponding .txt file.
     """
-    input_dir = Path(input_dir)
-    output_dir = Path(output_dir)
+    input_dir = project_path(input_dir)
+    output_dir = project_path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     pdf_files = sorted(input_dir.glob("*.pdf"))

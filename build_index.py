@@ -22,6 +22,7 @@ folder of embeddings.
 import argparse
 import json
 from pathlib import Path
+from project_config import project_path
 
 import faiss
 import numpy as np
@@ -38,7 +39,7 @@ def build_index(embeddings_dir: str):
         position i. FAISS itself only knows positions, not book
         identities -- this list is what makes results meaningful.
     """
-    embeddings_dir = Path(embeddings_dir)
+    embeddings_dir = project_path(embeddings_dir)
     manifest_path = embeddings_dir / "manifest.json"
 
     if not manifest_path.exists():
@@ -58,6 +59,8 @@ def build_index(embeddings_dir: str):
     # runs, which makes debugging much easier than arbitrary dict order.
     for book_id in sorted(manifest.keys()):
         entry = manifest[book_id]
+        if entry.get("dry_run") is True:
+            raise ValueError(f"Synthetic dry-run embedding cannot be indexed: {book_id}")
         vector_path = embeddings_dir / entry["embedding_file"]
 
         if not vector_path.exists():
@@ -65,6 +68,8 @@ def build_index(embeddings_dir: str):
             continue
 
         vector = np.load(vector_path).astype(np.float32)
+        if vector.ndim != 1 or not np.isfinite(vector).all() or np.linalg.norm(vector) == 0:
+            raise ValueError(f"Embedding must be a finite nonzero vector: {vector_path}")
         vectors.append(vector)
         id_lookup.append(book_id)
 
@@ -87,7 +92,7 @@ def build_index(embeddings_dir: str):
 
 
 def save_index(index, id_lookup: list, output_dir: str) -> None:
-    output_dir = Path(output_dir)
+    output_dir = project_path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     faiss.write_index(index, str(output_dir / "books.index"))
@@ -99,7 +104,7 @@ def save_index(index, id_lookup: list, output_dir: str) -> None:
 def load_index(index_dir: str):
     """For search.py to use later: loads a previously built index and
     its id_lookup table."""
-    index_dir = Path(index_dir)
+    index_dir = project_path(index_dir)
     index = faiss.read_index(str(index_dir / "books.index"))
     id_lookup = json.loads((index_dir / "id_lookup.json").read_text(encoding="utf-8"))
     return index, id_lookup
@@ -108,7 +113,7 @@ def load_index(index_dir: str):
 def main():
     parser = argparse.ArgumentParser(description="Build a FAISS index from book embeddings.")
     parser.add_argument("--embeddings", required=True, help="Folder containing manifest.json + .npy embedding files")
-    parser.add_argument("--out", default="data/index", help="Output folder for the FAISS index + id lookup table")
+    parser.add_argument("--out", default="data/index_metadata", help="Output folder for the FAISS index + id lookup table")
     args = parser.parse_args()
 
     index, id_lookup = build_index(args.embeddings)

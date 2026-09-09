@@ -31,6 +31,7 @@ import re
 import sys
 import unicodedata
 from pathlib import Path
+from project_config import project_path
 
 
 # ---------------------------------------------------------------------------
@@ -259,9 +260,7 @@ def clean_arabic_text(raw_text: str) -> str:
       3. Strip watermark / page-number lines (structural noise).
       4. Remove English letters and their noise-only line remnants,
          then rejoin wrapped lines into real paragraphs.
-      5. Drop gibberish paragraphs (decorative-page OCR misreads) --
-         done AFTER joining, since full paragraphs give a much more
-         reliable signal than short raw wrapped lines.
+      5. Optional gibberish filter (disabled to preserve valid prose).
       6. Collapse leftover whitespace.
     """
     text = remove_diacritics(raw_text)
@@ -290,8 +289,8 @@ def clean_arabic_text(raw_text: str) -> str:
 
 
 def clean_folder(input_dir: str, output_dir: str) -> None:
-    input_dir = Path(input_dir)
-    output_dir = Path(output_dir)
+    input_dir = project_path(input_dir)
+    output_dir = project_path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     txt_files = sorted(input_dir.glob("*.txt"))
@@ -322,7 +321,7 @@ def main():
     args = parser.parse_args()
 
     if args.file:
-        raw = Path(args.file).read_text(encoding="utf-8")
+        raw = project_path(args.file).read_text(encoding="utf-8")
         print(clean_arabic_text(raw))
     elif args.folder:
         clean_folder(args.folder, args.out)
